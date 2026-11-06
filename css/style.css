@@ -295,3 +295,12 @@ html, body { margin: 0; height: 100%; color: var(--ink);
 .bubble.sm { flex: none; padding: 6px 10px; font-size: clamp(20px, 6vw, 30px); white-space: nowrap; border-radius: 22px; }
 .maze { width: min(100%, 44vh); }
 .hscene { width: min(100%, calc(44vh * 4 / 3)); }
+
+/* 앱 안 브라우저·소리 없음 안내 카드 (시작 화면, js/start.js). 글은 한 줄, 가장 작은 글자 10px 이상 */
+.inapp-card { position: relative; z-index: 3; flex: none; box-sizing: border-box; width: min(92vw, 360px); padding: 10px 12px 12px; border: 3px solid #ffb300; border-radius: 18px; background: #fffdf5; box-shadow: 0 6px 14px rgba(0, 0, 0, .22); color: #4a3022; text-align: center; }
+.inapp-title, .inapp-line { white-space: nowrap; line-height: 1.35; }
+.inapp-title { font-size: 17px; }
+.inapp-line { font-size: 14px; }
+.inapp-row { display: flex; gap: 8px; margin-top: 8px; }
+.inapp-btn { flex: 1 1 0; min-width: 0; min-height: 40px; padding: 4px 6px; font-size: 15px; white-space: nowrap; }
+.inapp-toast { position: fixed; left: 50%; top: 14px; transform: translateX(-50%); z-index: 120; max-width: 92vw; padding: 10px 16px; border-radius: 14px; background: rgba(40, 40, 40, .92); color: #fff; font-size: 15px; white-space: nowrap; pointer-events: none; }

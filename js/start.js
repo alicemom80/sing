@@ -25,6 +25,148 @@
     } catch (e) { /* 지원하지 않는 브라우저(아이폰 사파리 등) */ }
   };
 
+  /* ---------- 앱 안 브라우저 안내 (카카오톡 등) ----------
+     카카오톡 같은 앱 안 브라우저에서는 영어 읽기(speechSynthesis)가 안 된다.
+     시작 화면에 안내 카드를 보여 주고, 바깥 브라우저로 열기·주소 복사를 돕는다. 카드가 떠 있어도 ▶는 그대로 누를 수 있다. */
+  const INAPP_UA = /KAKAOTALK|NAVER\(inapp|Instagram|FBAN|FBAV|Line\/|DaumApps|everytimeApp/i;   // 앱 안 브라우저임을 알려 주는 사용자 글자(UA)
+  const KAKAO_UA = /KAKAOTALK/i;
+  const DISMISS_KEY = A.storageKey('inapp-dismissed');   // '그냥 쓸게요'를 누른 기기 표시
+  const VOICE_WAIT_MS = 3000;    // 시작 후 이만큼 기다려도 음성이 하나도 없으면 안내한다
+  const OPEN_WAIT_MS = 1500;     // 바깥으로 열라고 한 뒤에도 이 화면이 그대로면 주소 복사로 바꾼다
+  const TOAST_MS = 2500;
+  const LINE_MIN_PX = 10;        // 카드 글자는 이보다 더 줄이지 않는다
+  const FIT_MARGIN = 0.96;       // 딱 맞으면 반올림 때문에 다시 넘칠 수 있어서 여유를 둔다
+  const COPIED_TEXT = '주소를 복사했어요. 크롬에 붙여 넣어 주세요.';
+  const COPY_FAIL_TEXT = '주소를 직접 복사해 주세요. 주소창을 길게 눌러도 돼요.';
+  const INAPP_CARD = (name) => ({
+    title: '크롬이나 삼성 인터넷으로 열어 주세요',
+    lines: [`이 화면(${name})에서는 영어 소리가 안 나와요.`, '브라우저로 열면 소리가 나요.'],
+  });
+  const NOVOICE_CARD = {
+    title: '이 기기에서는 영어 소리가 안 나올 수 있어요',
+    lines: ['그림 놀이는 그대로 할 수 있어요.'],
+  };
+  const inAppName = () => (KAKAO_UA.test(navigator.userAgent) ? '카카오톡' : '지금 화면');
+  const isInApp = () => INAPP_UA.test(navigator.userAgent);
+  const isDismissed = () => {
+    try { return localStorage.getItem(DISMISS_KEY) === '1'; } catch (e) { return false; }
+  };
+  const markDismissed = () => {
+    try { localStorage.setItem(DISMISS_KEY, '1'); } catch (e) { /* 저장 불가 기기는 무시 */ }
+  };
+
+  // 화면 위쪽에 잠깐 뜨는 알림 (누를 수 없고 2.5초 뒤 사라진다)
+  const toast = (text) => {
+    document.querySelectorAll('.inapp-toast').forEach(n => n.remove());
+    const t = el('div', 'inapp-toast');
+    t.textContent = text;
+    document.body.append(t);
+    setTimeout(() => t.remove(), TOAST_MS);
+  };
+
+  // 클립보드 API를 못 쓰면 임시 글상자에 주소를 넣고 복사 명령을 쓴다
+  const copyByTextarea = (text) => {
+    const box = el('textarea');
+    box.value = text;
+    box.setAttribute('readonly', '');
+    box.style.cssText = 'position:fixed;top:0;left:0;opacity:0';
+    document.body.append(box);
+    box.select();
+    box.setSelectionRange(0, text.length);
+    let ok = false;
+    try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+    box.remove();
+    return ok;
+  };
+  const copyAddress = () => {
+    const url = location.href;
+    const done = (ok) => toast(ok ? COPIED_TEXT : COPY_FAIL_TEXT);
+    if (!navigator.clipboard?.writeText) { done(copyByTextarea(url)); return; }
+    navigator.clipboard.writeText(url).then(() => done(true), () => done(copyByTextarea(url)));
+  };
+
+  // 카카오톡이면 카카오 전용 주소로, 다른 앱 안 브라우저의 안드로이드면 크롬 주소(intent)로 연다.
+  // 그래도 화면이 그대로면(iOS 등) 주소를 복사해 안내한다.
+  const openOutside = () => {
+    const ua = navigator.userAgent;
+    let target = null;
+    if (KAKAO_UA.test(ua)) target = `kakaotalk://web/openExternal?url=${encodeURIComponent(location.href)}`;
+    else if (/android/i.test(ua)) target = `intent://${location.host}${location.pathname}${location.search}#Intent;scheme=https;package=com.android.chrome;end`;
+    if (!target) { copyAddress(); return; }
+    location.href = target;
+    setTimeout(() => { if (!document.hidden) copyAddress(); }, OPEN_WAIT_MS);
+  };
+
+  const textLine = (cls, text) => {
+    const p = el('div', cls);
+    p.textContent = text;
+    return p;
+  };
+  const rowOf = (...buttons) => {
+    const row = el('div', 'inapp-row');
+    row.append(...buttons);
+    return row;
+  };
+  const actionButton = (label, onClick) => {
+    const b = el('button', 'btn inapp-btn');
+    b.textContent = label;
+    b.onclick = onClick;
+    return b;
+  };
+  // 안내 카드: 글 두세 줄과 버튼. withOpen 이면 '브라우저로 열기'를 맨 위에 둔다 (앱 안 브라우저일 때만)
+  const buildCard = ({ title, lines }, withOpen) => {
+    const box = el('div', 'inapp-card');
+    box.setAttribute('role', 'region');
+    box.setAttribute('aria-label', title);
+    box.append(textLine('inapp-title', title), ...lines.map(line => textLine('inapp-line', line)));
+    if (withOpen) box.append(rowOf(actionButton('브라우저로 열기', openOutside)));
+    box.append(rowOf(
+      actionButton('주소 복사하기', copyAddress),
+      actionButton('그냥 쓸게요', () => { markDismissed(); box.remove(); }),
+    ));
+    return box;
+  };
+
+  // 글 한 줄이 칸을 넘치면 그 줄만 글자를 줄인다 (LINE_MIN_PX 아래로는 안 줄인다)
+  const fitLine = (node) => {
+    node.style.fontSize = '';
+    const room = node.clientWidth;
+    const need = node.scrollWidth;
+    if (need <= room) return;
+    const size = parseFloat(getComputedStyle(node).fontSize);
+    node.style.fontSize = `${Math.max(LINE_MIN_PX, size * room / need * FIT_MARGIN)}px`;
+  };
+  const fitCard = (card) => card.querySelectorAll('.inapp-title, .inapp-line').forEach(fitLine);
+
+  // 카드는 로고 아래, 주인공 그림 앞에 끼워 넣는다. 주인공이 조금 작아질 뿐 ▶ 와 겹치지 않는다.
+  const showCard = (page, hero, card) => {
+    if (!page.isConnected) return;   // 이미 ▶를 눌러 다른 화면으로 넘어갔으면 그냥 둔다
+    hero.before(card);
+    fitCard(card);
+    document.fonts?.ready.then(() => fitCard(card));   // 글꼴이 늦게 와도 다시 맞춘다
+  };
+
+  const hasVoices = () => speechSynthesis.getVoices().length > 0;
+  // 시작 후 3초 동안 음성이 하나도 없으면 onNoVoice 를 부른다 (음성 목록이 늦게 오는 기기는 voiceschanged 로 취소)
+  const watchVoices = (onNoVoice) => {
+    const stop = () => {
+      clearTimeout(timer);
+      speechSynthesis.removeEventListener('voiceschanged', onChange);
+    };
+    const onChange = () => { if (hasVoices()) stop(); };
+    const timer = setTimeout(() => { stop(); if (!hasVoices()) onNoVoice(); }, VOICE_WAIT_MS);
+    speechSynthesis.addEventListener('voiceschanged', onChange);
+  };
+
+  // 시작 화면에 안내를 넣을지 정한다 ('그냥 쓸게요'를 누른 기기에는 다시 보이지 않는다)
+  const addNotice = (page, hero) => {
+    if (isDismissed()) return;
+    if (isInApp()) { showCard(page, hero, buildCard(INAPP_CARD(inAppName()), true)); return; }
+    const noVoice = () => showCard(page, hero, buildCard(NOVOICE_CARD, false));
+    if (!('speechSynthesis' in window)) { noVoice(); return; }
+    watchVoices(noVoice);
+  };
+
   A.start = function () {
     A.target = null; A.targetText = null;
     A.setBg('start');
@@ -53,5 +195,6 @@
       go,
     );
     A.show(page);
+    addNotice(page, hero);
   };
 })();
