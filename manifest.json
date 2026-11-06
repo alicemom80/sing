@@ -1,0 +1,17 @@
+{
+  "name": "씽씽 바깥 세상",
+  "short_name": "씽씽 바깥",
+  "description": "밖에서 보는 탈것, 하늘, 날씨, 나무, 직업, 동네를 영어로 듣고, 보고, 골라 보는 유아 영어 단어 놀이",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "fullscreen",
+  "display_override": ["fullscreen", "standalone"],
+  "orientation": "portrait",
+  "background_color": "#eaf6ff",
+  "theme_color": "#4d9fff",
+  "lang": "ko",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
