@@ -193,6 +193,7 @@
       el('h1', 'logo', A.logoHtml()),
       hero,
       go,
+      el('div', 'credit', '<i class="igicon"></i>instagram <b>@alicemom80</b>'),
     );
     A.show(page);
     addNotice(page, hero);

@@ -304,3 +304,13 @@ html, body { margin: 0; height: 100%; color: var(--ink);
 .inapp-row { display: flex; gap: 8px; margin-top: 8px; }
 .inapp-btn { flex: 1 1 0; min-width: 0; min-height: 40px; padding: 4px 6px; font-size: 15px; white-space: nowrap; }
 .inapp-toast { position: fixed; left: 50%; top: 14px; transform: translateX(-50%); z-index: 120; max-width: 92vw; padding: 10px 16px; border-radius: 14px; background: rgba(40, 40, 40, .92); color: #fff; font-size: 15px; white-space: nowrap; pointer-events: none; }
+
+/* 만든 사람 표시 (눌러도 아무 일 없음. 링크는 부모님 메뉴 안에만 있다) */
+.credit { flex: none; align-self: center; position: relative; z-index: 2; pointer-events: none; user-select: none; -webkit-user-select: none; white-space: nowrap; background: rgba(255, 255, 255, .88); color: var(--ink); border-radius: 999px; padding: 6px 18px; margin: 0 auto 14px; font-size: 18px; box-shadow: 0 2px 6px rgba(0, 0, 0, .12); }
+.credit.small { font-size: 15px; padding: 4px 14px; margin: 6px auto 8px; }
+.credit b { font-weight: 400; color: #ff6b3d; }
+.ppanel a.pig { color: var(--ink); text-decoration: none; background: rgba(150, 120, 60, .18); border-radius: 16px; padding: 8px 14px; font-size: 19px; white-space: nowrap; }
+/* 인스타 아이콘 (직접 그린 단순 모양, 글자 크기에 맞춰 커짐) */
+.igicon { display: inline-block; position: relative; width: 1.25em; height: 1.25em; margin-right: .35em; vertical-align: -.28em; border-radius: .34em; background: radial-gradient(circle at 30% 107%, #fdf497 0, #fdf497 5%, #fd5949 45%, #d6249f 60%, #285aeb 90%); }
+.igicon::before { content: ''; position: absolute; inset: .2em; border: .09em solid #fff; border-radius: .3em; background: radial-gradient(circle at 78% 24%, #fff 0, #fff .07em, transparent .08em); }
+.igicon::after { content: ''; position: absolute; left: 50%; top: 50%; width: .32em; height: .32em; transform: translate(-50%, -50%); border: .09em solid #fff; border-radius: 50%; }

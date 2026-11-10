@@ -47,7 +47,7 @@
     page.append(grid);
     const sb = el('button', 'btn bookbtn', `📒 <b>스티커북</b> <span>${A.stickers.total()} / ${A.stickers.all()}</span>`);
     sb.onclick = () => A.stickers.book(A.home);
-    page.append(sb);
+    page.append(sb, el('div', 'credit small', '<i class="igicon"></i>instagram <b>@alicemom80</b>'));
     A.show(page);
   };
 
