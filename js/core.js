@@ -60,6 +60,9 @@
   const rateOf = (text) => (/\s/.test(text.trim()) ? RATE_SENTENCE : RATE_WORD);
   let lit = null;               // 지금 효과를 받는 { node, id }
   let utterId = 0;
+  let speakGen = 0;             // '끊고 새로 말하기'를 할 때마다 올라간다 (이미 지나간 말을 다시 읽지 않게 하는 번호)
+  let followers = [];           // 마지막 '끊고 새로 말하기' 뒤에 이어 붙인 말들 (다시 읽을 때 함께 읽는다)
+  let startAt = 0;              // cancel 뒤 쉬었다가 말을 시작하는 시각 (이어 붙이는 말은 이보다 뒤에 넣는다)
   const light = (node, id) => {
     lit?.node.classList.remove('reading');
     lit = node ? { node, id } : null;
@@ -94,25 +97,36 @@
           speechSynthesis.speak(u);
         });
       };
-      if (queue) sayAll(true);
-      else {
+      const gen = queue ? speakGen : ++speakGen;
+      const current = () => gen === speakGen;   // 그 사이 다른 말로 넘어가지 않았는가
+      if (queue) {
+        followers.push(sayAll);
+        // 앞의 말이 아직 시작 전(cancel 뒤 쉬는 중)이면 그 뒤에 붙인다 (순서가 뒤바뀌지 않게)
+        const wait = startAt - Date.now();
+        if (wait > 0) setTimeout(() => { if (current()) sayAll(true); }, wait + 1); else sayAll(true);
+      } else {
+        followers = [];
         const busy = speechSynthesis.speaking || speechSynthesis.pending;
         speechSynthesis.cancel(); light(null);
         // 일부 안드로이드 기기는 cancel 바로 뒤의 speak를 무시한다
-        if (busy) setTimeout(() => sayAll(true), CANCEL_GAP_MS); else sayAll(true);
+        if (busy) {
+          startAt = Date.now() + CANCEL_GAP_MS;
+          setTimeout(() => { if (current()) sayAll(true); }, CANCEL_GAP_MS);
+        } else { startAt = 0; sayAll(true); }
       }
       // 지정한 음성이 소리를 못 내는 기기: 음성을 지정하지 않고 폰 기본 음성으로 한 번 더
       if (voice && !queue) {
         setTimeout(() => {
-          if (started) return;
+          if (started || !current()) return;   // 이미 다음 말로 넘어갔으면 옛 말을 다시 읽지 않는다
           speechSynthesis.cancel();
           sayAll(false);
+          followers.forEach(again => again(false));   // 뒤에 이어 붙였던 말(문제 소리 등)도 함께 다시
         }, RETRY_MS);
       }
       // 기기에 따라 시작 신호가 안 올 때: 글자 수로 어림해서 차례로 효과를 준다
       if (parts.some(p => p.node)) {
         setTimeout(() => {
-          if (started) return;
+          if (started || !current()) return;
           let at = 0;
           parts.forEach((part, k) => {
             const ms = part.text.length * MS_PER_CHAR / rateOf(part.text) * 0.8;
@@ -138,6 +152,13 @@
     sayNow(input, queue);
   };
   A.say = (w, queue = false) => A.speak(w.say, queue);
+  // 화면을 떠날 때: 지금 말과 기다리는 말을 모두 멈춘다 (다시 읽기도 취소)
+  A.stopSpeech = () => {
+    speakGen++; followers = []; startAt = 0;
+    if (held) held.length = 0;
+    light(null);
+    if ('speechSynthesis' in window) speechSynthesis.cancel();
+  };
   // 문장 만들기: 단수는 "This is an apple.", 복수(w.plural)는 "These are jeans." 식으로 쓴다
   // 관사가 비어 있는 단어(w.art === '': 색깔, 셀 수 없는 말)는 관사 없이 "This is red." 로 쓴다
   // name 은 화면에 보일 이름(w.en) 또는 읽을 이름(w.say)
@@ -303,7 +324,7 @@
     const bar = A.el('div', 'topbar');
     const back = A.el('button', 'btn round', onBack ? '⬅' : '🏠');
     back.setAttribute('aria-label', '뒤로');
-    back.onclick = () => { speechSynthesis.cancel?.(); (onBack || A.home)(); };
+    back.onclick = () => { A.stopSpeech(); (onBack || A.home)(); };
     const t = A.el('div', 'title', title);
     bar.append(back, t);
     if (withSpeaker) {
@@ -379,6 +400,7 @@
     let i = 0, stars = 0;
     let afterPraise = false;
     const next = () => {
+      if (!ctx.stage.isConnected) return;   // 놀이 화면을 떠났으면 남은 타이머는 아무것도 하지 않는다
       if (i >= order.length) {
         ctx.progress(order.length, order.length);   // 마지막 문제를 맞힌 뒤 진행바를 끝까지 채운다
         return ctx.finish(stars, order.length);
@@ -411,7 +433,9 @@
           if (node) A.shake(node);
           A.oops(!quiet);
           if (readFirst) A.speak(readFirst);
-          if (textFn) A.speak(textFn(w), true); else A.say(w, true);
+          // 다시 들려줄 때는 질문(첫 줄)만 읽는다. 보기까지 다 읽으면 너무 길다 (스피커 버튼·말풍선은 전부 읽는다)
+          const again = textFn ? textFn(w) : null;
+          if (textFn) A.speak(Array.isArray(again) ? again.slice(0, 1) : again, true); else A.say(w, true);
         },
       };
       renderQ(w, api);

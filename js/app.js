@@ -132,6 +132,7 @@
       stage,
       progress(i, n) { bar.firstChild.style.width = `${(i / n) * 100}%`; },
       finish(right, total) {
+        if (!stage.isConnected) return;   // 놀이 화면을 떠난 뒤에는 끝 화면·소리·별 저장을 하지 않는다
         A.target = null; A.targetText = null;
         const { done, rewards } = finishGame(t, gi, id, right, total);
         const again = el('button', 'btn big primary', '🔁 다시');

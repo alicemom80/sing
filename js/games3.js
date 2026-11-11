@@ -217,6 +217,7 @@
         const cur = () => order[i];
 
         const ask = () => {
+          if (!scene.isConnected) return;   // 놀이 화면을 떠났으면 묻지 않는다
           const s = cur();
           tried = false; locked = false;
           A.target = null; A.targetText = askLine(s.w);

@@ -15,22 +15,33 @@
   // 폰·태블릿 브라우저: ▶를 누를 때 딱 한 번 전체 화면을 요청한다.
   // (안드로이드 크롬은 전체 화면에 들어갈 때마다 "종료하려면 드래그" 안내를 띄우므로, 풀려도 다시 켜지 않는다.)
   // 마우스로 쓰는 컴퓨터와 이미 설치한 앱(주소창이 없는 모드)은 건너뛴다.
+  // 화면을 세로로 잠근다. 전체 화면(또는 설치한 앱)일 때만 되는 기기가 많고, 안 되면 조용히 넘어간다.
+  // 잠글 수 없는 곳(아이폰, 앱 안 브라우저)은 가로로 돌렸을 때 '세로로 돌려 주세요' 화면이 가린다 (css .rotate-note)
+  const lockPortrait = () => {
+    try { screen.orientation?.lock?.('portrait')?.catch?.(() => { /* 잠글 수 없는 기기 */ }); } catch (e) { /* 지원하지 않는 브라우저 */ }
+  };
   const requestFullOnce = () => {
     const root = document.documentElement;
-    if (!root.requestFullscreen || document.fullscreenElement) return;
     if (matchMedia('(hover: hover) and (pointer: fine)').matches) return;
-    if (matchMedia('(display-mode: fullscreen), (display-mode: standalone)').matches) return;
+    if (!root.requestFullscreen || document.fullscreenElement) { lockPortrait(); return; }
+    if (matchMedia('(display-mode: fullscreen), (display-mode: standalone)').matches) { lockPortrait(); return; }
     try {
-      root.requestFullscreen({ navigationUI: 'hide' })?.catch?.(() => { /* 막혀도 앱은 그대로 쓸 수 있다 */ });
+      const asked = root.requestFullscreen({ navigationUI: 'hide' });
+      if (asked?.then) asked.then(lockPortrait, () => { /* 막혀도 앱은 그대로 쓸 수 있다 */ });
+      else lockPortrait();
     } catch (e) { /* 지원하지 않는 브라우저(아이폰 사파리 등) */ }
   };
+
+  // 폰·태블릿을 가로로 돌리면 화면을 가리는 안내 (보이기·숨기기는 css 가 화면 방향을 보고 한다)
+  const rotateNote = el('div', 'rotate-note', '<div class="rotate-icon">📱</div><b>세로로 돌려 주세요</b><small>Please rotate your device</small>');
+  rotateNote.setAttribute('role', 'alert');
+  document.body.append(rotateNote);
 
   /* ---------- 앱 안 브라우저 안내 (카카오톡 등) ----------
      카카오톡 같은 앱 안 브라우저에서는 영어 읽기(speechSynthesis)가 안 된다.
      시작 화면에 안내 카드를 보여 주고, 바깥 브라우저로 열기·주소 복사를 돕는다. 카드가 떠 있어도 ▶는 그대로 누를 수 있다. */
   const INAPP_UA = /KAKAOTALK|NAVER\(inapp|Instagram|FBAN|FBAV|Line\/|DaumApps|everytimeApp/i;   // 앱 안 브라우저임을 알려 주는 사용자 글자(UA)
   const KAKAO_UA = /KAKAOTALK/i;
-  const DISMISS_KEY = A.storageKey('inapp-dismissed');   // '그냥 쓸게요'를 누른 기기 표시
   const VOICE_WAIT_MS = 3000;    // 시작 후 이만큼 기다려도 음성이 하나도 없으면 안내한다
   const OPEN_WAIT_MS = 1500;     // 바깥으로 열라고 한 뒤에도 이 화면이 그대로면 주소 복사로 바꾼다
   const TOAST_MS = 2500;
@@ -48,12 +59,6 @@
   };
   const inAppName = () => (KAKAO_UA.test(navigator.userAgent) ? '카카오톡' : '지금 화면');
   const isInApp = () => INAPP_UA.test(navigator.userAgent);
-  const isDismissed = () => {
-    try { return localStorage.getItem(DISMISS_KEY) === '1'; } catch (e) { return false; }
-  };
-  const markDismissed = () => {
-    try { localStorage.setItem(DISMISS_KEY, '1'); } catch (e) { /* 저장 불가 기기는 무시 */ }
-  };
 
   // 화면 위쪽에 잠깐 뜨는 알림 (누를 수 없고 2.5초 뒤 사라진다)
   const toast = (text) => {
@@ -113,17 +118,14 @@
     b.onclick = onClick;
     return b;
   };
-  // 안내 카드: 글 두세 줄과 버튼. withOpen 이면 '브라우저로 열기'를 맨 위에 둔다 (앱 안 브라우저일 때만)
+  // 안내 카드: 글 두세 줄. withOpen 이면 '브라우저로 열기' 버튼을 붙인다 (앱 안 브라우저일 때만)
+  // 닫기 버튼은 없다: 앱 안 브라우저로 열 때마다 다시 보여 준다
   const buildCard = ({ title, lines }, withOpen) => {
     const box = el('div', 'inapp-card');
     box.setAttribute('role', 'region');
     box.setAttribute('aria-label', title);
     box.append(textLine('inapp-title', title), ...lines.map(line => textLine('inapp-line', line)));
     if (withOpen) box.append(rowOf(actionButton('브라우저로 열기', openOutside)));
-    box.append(rowOf(
-      actionButton('주소 복사하기', copyAddress),
-      actionButton('그냥 쓸게요', () => { markDismissed(); box.remove(); }),
-    ));
     return box;
   };
 
@@ -158,9 +160,8 @@
     speechSynthesis.addEventListener('voiceschanged', onChange);
   };
 
-  // 시작 화면에 안내를 넣을지 정한다 ('그냥 쓸게요'를 누른 기기에는 다시 보이지 않는다)
+  // 시작 화면에 안내를 넣을지 정한다 (시작 화면이 열릴 때마다 다시 살핀다)
   const addNotice = (page, hero) => {
-    if (isDismissed()) return;
     if (isInApp()) { showCard(page, hero, buildCard(INAPP_CARD(inAppName()), true)); return; }
     const noVoice = () => showCard(page, hero, buildCard(NOVOICE_CARD, false));
     if (!('speechSynthesis' in window)) { noVoice(); return; }
