@@ -161,7 +161,7 @@
 
   // 시작 화면에 안내를 넣을지 정한다 (시작 화면이 열릴 때마다 다시 살핀다)
   const addNotice = (page, hero) => {
-    if (isInApp()) { showCard(page, hero, buildCard(INAPP_CARD(inAppName()), true)); return; }
+    if (isInApp()) return;   // 앱 안 브라우저(카카오톡 등): 안내 카드 없이 ▶가 바깥 브라우저로 연다
     const noVoice = () => showCard(page, hero, buildCard(NOVOICE_CARD, false));
     if (!('speechSynthesis' in window)) { noVoice(); return; }
     watchVoices(noVoice);
@@ -191,9 +191,9 @@
     page.append(
       A.parent.button(),
       letters,
-      el('h1', 'logo', A.logoHtml()),
-      hero,
+      el('h1', 'logo', A.logoHtml(true)),
       go,
+      hero,
       el('div', 'credit', '<i class="igicon"></i>instagram <b>@alicemom80</b>'),
     );
     A.show(page);
