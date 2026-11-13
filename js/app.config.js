@@ -4,7 +4,7 @@ window.A = window.A || {};
 
 A.CONFIG = {
   // 화면에 보이는 앱 이름
-  title: { ko: '씽씽 바깥 세상', en: 'Outside World', icon: '🚌' },
+  title: { ko: '씽씽 바깥세상 영어 놀이', en: 'Outside World', icon: '🚌' },
   // 기기에 저장하는 값의 이름표. 앱마다 달라야 서로 섞이지 않는다
   storagePrefix: 'sing-outside',
   // 시작 화면 (주인공은 기준그림 코끼리)

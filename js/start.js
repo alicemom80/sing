@@ -51,7 +51,7 @@
   const COPY_FAIL_TEXT = '주소를 직접 복사해 주세요. 주소창을 길게 눌러도 돼요.';
   const INAPP_CARD = (name) => ({
     title: '크롬이나 삼성 인터넷으로 열어 주세요',
-    lines: [`이 화면(${name})에서는 영어 소리가 안 나와요.`, '브라우저로 열면 소리가 나요.'],
+    lines: [`이 화면(${name})에서는 영어 소리가 안 나와요.`, '▶를 누르면 브라우저로 열려요.'],
   });
   const NOVOICE_CARD = {
     title: '이 기기에서는 영어 소리가 안 나올 수 있어요',
@@ -118,14 +118,13 @@
     b.onclick = onClick;
     return b;
   };
-  // 안내 카드: 글 두세 줄. withOpen 이면 '브라우저로 열기' 버튼을 붙인다 (앱 안 브라우저일 때만)
+  // 안내 카드: 글 두세 줄. 버튼 없음: 앱 안 브라우저에서는 ▶가 바깥 브라우저로 연다
   // 닫기 버튼은 없다: 앱 안 브라우저로 열 때마다 다시 보여 준다
   const buildCard = ({ title, lines }, withOpen) => {
     const box = el('div', 'inapp-card');
     box.setAttribute('role', 'region');
     box.setAttribute('aria-label', title);
     box.append(textLine('inapp-title', title), ...lines.map(line => textLine('inapp-line', line)));
-    if (withOpen) box.append(rowOf(actionButton('브라우저로 열기', openOutside)));
     return box;
   };
 
@@ -183,6 +182,7 @@
     const go = el('button', 'btn startbtn', '▶');
     go.setAttribute('aria-label', '시작');
     go.onclick = () => {
+      if (isInApp()) { openOutside(); return; }   // 앱 안 브라우저(카카오톡 등)에서는 ▶가 바깥 브라우저로 연다
       requestFullOnce();   // 다른 동작보다 먼저: 누른 직후에만 허락된다
       A.sfx('ok');
       A.home();
