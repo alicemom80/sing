@@ -1,5 +1,5 @@
 // 한 번 열면 인터넷 없이도 열리도록 파일을 저장해 두는 서비스 워커
-const CACHE = 'sing-outside-v13';
+const CACHE = 'sing-outside-v14';
 const CACHE_PREFIX = 'sing-outside-';   // 같은 주소의 다른 앱 캐시는 건드리지 않는다
 const FILES = [
   './', 'index.html', 'manifest.json', 'css/style.css', 'fonts/Jua.woff2', 'libs/confetti.js',

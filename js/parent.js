@@ -164,6 +164,7 @@
       }, resetArmed ? 'danger' : '')),
       row('만든 사람 소식', (() => { const a = el('a', 'pig', '<i class="igicon"></i> @alicemom80'); a.href = 'https://www.instagram.com/alicemom80/'; a.target = '_blank'; a.rel = 'noopener noreferrer'; return a; })()),
       btn('닫기', closeMenu, 'pclose'),
+      el('div', 'pcopy', '© 2026 alicemom80. All rights reserved.'),
     );
     const next = el('div', 'pmodal');
     next.append(panel);

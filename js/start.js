@@ -195,6 +195,7 @@
       go,
       hero,
       el('div', 'credit', '<i class="igicon"></i>instagram <b>@alicemom80</b>'),
+      el('div', 'copyright', '© 2026 alicemom80. All rights reserved.'),
     );
     A.show(page);
     addNotice(page, hero);
